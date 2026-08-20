@@ -21,7 +21,7 @@ KEY_PATH = "fxcloud.key"
 BASE_URL = "https://uat-api.thisisme.com"
 
 # API Key for security
-API_KEY = os.environ.get('API_KEY', 'dreamteam91frag')
+API_KEY = os.environ.get('API_KEY', 'dreamteam91frag').strip()
 
 def verify_api_key():
     """Check if the API key is valid"""

@@ -519,17 +519,7 @@ def check_trace_request(request_id):
         "data": results,
         "extracted": extracted
     })
-@app.route('/zoho-sign-webhook', methods=['POST'])
-def zoho_sign_webhook():
-    """TEMP DIAGNOSTIC - just logs whatever Zoho Sign actually sends us."""
-    print("=== ZOHO SIGN WEBHOOK RECEIVED ===")
-    print("Headers:", dict(request.headers))
-    print("Raw body:", request.get_data(as_text=True))
-    try:
-        print("Parsed JSON:", request.get_json(force=True))
-    except Exception as e:
-        print("Could not parse as JSON:", str(e))
-    return jsonify({"status": "received"}), 200
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

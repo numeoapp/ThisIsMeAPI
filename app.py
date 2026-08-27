@@ -4,7 +4,7 @@ Supports: DataPro and Trace APIs
 Save this as: app.py
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 import requests
 import urllib3
 import time
@@ -238,7 +238,8 @@ def home():
             "trace": "POST /trace (Trace only)",
             "verify_all": "POST /verify-all (DataPro + Trace combined)",
             "check_datapro": "GET /check/datapro/{request_id}",
-            "check_trace": "GET /check/trace/{request_id}"
+            "check_trace": "GET /check/trace/{request_id}",
+            "download_attachment": "POST /download-attachment"
         }
     })
 
@@ -519,6 +520,56 @@ def check_trace_request(request_id):
         "data": results,
         "extracted": extracted
     })
+
+@app.route('/download-attachment', methods=['POST'])
+def download_attachment():
+    """Proxy-download a ThisIsMe attachment (report PDF / photo) using the
+    mTLS client cert, since Deluge can't present a client certificate itself."""
+
+    if not verify_api_key():
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    try:
+        data = request.get_json()
+    except:
+        return jsonify({"success": False, "error": "Invalid JSON"}), 400
+
+    if not data:
+        return jsonify({"success": False, "error": "No data provided"}), 400
+
+    file_url = data.get('url')
+    filename = data.get('filename') or 'attachment'
+
+    if not file_url:
+        return jsonify({"success": False, "error": "url is required"}), 400
+
+    if not file_url.startswith(BASE_URL):
+        return jsonify({"success": False, "error": "url must be a ThisIsMe attachment link"}), 400
+
+    try:
+        resp = requests.get(
+            file_url,
+            verify=False,
+            cert=(CERT_PATH, KEY_PATH),
+            timeout=30
+        )
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "type": type(e).__name__}), 500
+
+    if resp.status_code != 200:
+        return jsonify({
+            "success": False,
+            "error": "Failed to download attachment",
+            "status_code": resp.status_code
+        }), resp.status_code
+
+    content_type = resp.headers.get('Content-Type', 'application/octet-stream')
+
+    return Response(
+        resp.content,
+        mimetype=content_type,
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+    )
 
 
 if __name__ == '__main__':

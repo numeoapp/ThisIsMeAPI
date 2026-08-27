@@ -42,7 +42,7 @@ def submit_datapro_verification(identity_number, reference=None):
 
     payload = {
         "identity_number": identity_number,
-        "disable_report": "true"
+        "disable_report": "false"
     }
 
     if reference:

@@ -31,6 +31,8 @@ for _entry in os.environ.get('API_KEYS', '').split(','):
     if _sep and _key.strip():
         API_KEYS[_name.strip()] = _key.strip()
 
+print(f"[auth] loaded keys (name: length): { {n: len(k) for n, k in API_KEYS.items()} }", flush=True)
+
 def verify_api_key():
     """Check the Bearer token against all configured keys and log who called"""
     token = request.headers.get('Authorization', '').replace('Bearer ', '').strip()
@@ -39,6 +41,7 @@ def verify_api_key():
             g.consumer = name
             print(f"[auth] {name} -> {request.method} {request.path}", flush=True)
             return True
+    print(f"[auth] FAILED {request.method} {request.path}: received token length {len(token)}, configured (name: length) { {n: len(k) for n, k in API_KEYS.items()} }", flush=True)
     return False
 
 # ============================================================================

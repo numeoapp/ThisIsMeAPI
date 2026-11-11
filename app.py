@@ -1,10 +1,11 @@
 """
 Railway Flask API for ThisIsMe Integration - Multiple APIs
-Supports: DataPro and Trace APIs
+Supports: DataPro, Trace and AML Risk Search APIs
 Save this as: app.py
 """
 
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, g
+import hmac
 import requests
 import urllib3
 import time
@@ -18,18 +19,27 @@ app = Flask(__name__)
 CERT_PATH = "www.fxcloudv2.co.za.pem"
 KEY_PATH = "fxcloud.key"
 
-BASE_URL = "https://uat-api.thisisme.com"
+BASE_URL = os.environ.get('THISISME_BASE_URL', 'https://uat-api.thisisme.com').rstrip('/')
 
-# API Key for security
-API_KEY = os.environ.get('API_KEY', 'dreamteam91frag').strip()
+# API keys: the existing API_KEY plus optional API_KEYS="name:key,name2:key2"
+API_KEYS = {}
+_legacy_key = os.environ.get('API_KEY', '').strip()
+if _legacy_key:
+    API_KEYS['legacy'] = _legacy_key
+for _entry in os.environ.get('API_KEYS', '').split(','):
+    _name, _sep, _key = _entry.strip().partition(':')
+    if _sep and _key.strip():
+        API_KEYS[_name.strip()] = _key.strip()
 
 def verify_api_key():
-    """Check if the API key is valid"""
-    auth_header = request.headers.get('Authorization')
-    if not auth_header:
-        return False
-    token = auth_header.replace('Bearer ', '').strip()
-    return token == API_KEY
+    """Check the Bearer token against all configured keys and log who called"""
+    token = request.headers.get('Authorization', '').replace('Bearer ', '').strip()
+    for name, key in API_KEYS.items():
+        if hmac.compare_digest(token.encode(), key.encode()):
+            g.consumer = name
+            print(f"[auth] {name} -> {request.method} {request.path}", flush=True)
+            return True
+    return False
 
 # ============================================================================
 # DATAPRO API FUNCTIONS
@@ -307,7 +317,7 @@ def home():
     return jsonify({
         "status": "online",
         "service": "ThisIsMe API Middleware",
-        "version": "2.1",
+        "version": "2.2",
         "endpoints": {
             "verify": "POST /verify (DataPro only)",
             "trace": "POST /trace (Trace only)",
@@ -342,7 +352,7 @@ def verify_id():
             "error": "Invalid JSON"
         }), 400
 
-    if not data:
+    if not isinstance(data, dict) or not data:
         return jsonify({
             "success": False,
             "error": "No data provided"
@@ -406,6 +416,12 @@ def trace_id():
             "error": "Invalid JSON"
         }), 400
 
+    if not isinstance(data, dict) or not data:
+        return jsonify({
+            "success": False,
+            "error": "No data provided"
+        }), 400
+
     identity_number = data.get('identity_number')
     reference = data.get('reference', '')
 
@@ -453,7 +469,7 @@ def trace_id():
 @app.route('/verify-all', methods=['POST'])
 def verify_all():
     """
-    Comprehensive verification - Calls both DataPro and Trace APIs
+    Comprehensive verification - Calls DataPro, Trace and AML Risk Search APIs
     Returns combined data
     """
 
@@ -469,6 +485,12 @@ def verify_all():
         return jsonify({
             "success": False,
             "error": "Invalid JSON"
+        }), 400
+
+    if not isinstance(data, dict) or not data:
+        return jsonify({
+            "success": False,
+            "error": "No data provided"
         }), 400
 
     identity_number = data.get('identity_number')
@@ -678,7 +700,7 @@ def aml_search():
             "error": "Invalid JSON"
         }), 400
 
-    if not data:
+    if not isinstance(data, dict) or not data:
         return jsonify({
             "success": False,
             "error": "No data provided"
@@ -746,7 +768,7 @@ def download_attachment():
     except:
         return jsonify({"success": False, "error": "Invalid JSON"}), 400
 
-    if not data:
+    if not isinstance(data, dict) or not data:
         return jsonify({"success": False, "error": "No data provided"}), 400
 
     file_url = data.get('url')
@@ -755,7 +777,7 @@ def download_attachment():
     if not file_url:
         return jsonify({"success": False, "error": "url is required"}), 400
 
-    if not file_url.startswith(BASE_URL):
+    if not file_url.startswith(BASE_URL + "/"):
         return jsonify({"success": False, "error": "url must be a ThisIsMe attachment link"}), 400
 
     try:

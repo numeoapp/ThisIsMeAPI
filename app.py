@@ -48,6 +48,18 @@ def verify_api_key():
 # DATAPRO API FUNCTIONS
 # ============================================================================
 
+def parse_json(response):
+    """Return the response JSON, or a diagnostic dict if ThisIsMe sent a non-JSON body"""
+    try:
+        return response.json()
+    except ValueError:
+        return {
+            "error": "Non-JSON response from ThisIsMe",
+            "http_status": response.status_code,
+            "final_url": response.url,
+            "body_preview": response.text[:300]
+        }
+
 def submit_datapro_verification(identity_number, reference=None):
     """Submit ID to ThisIsMe DataPro API"""
     url = f"{BASE_URL}/v4/dhadatapro/"
@@ -70,7 +82,7 @@ def submit_datapro_verification(identity_number, reference=None):
             cert=(CERT_PATH, KEY_PATH),
             timeout=30
         )
-        return response.status_code, response.json()
+        return response.status_code, parse_json(response)
     except Exception as e:
         return 500, {"error": str(e), "type": type(e).__name__}
 
@@ -89,7 +101,7 @@ def get_datapro_results(request_id, max_attempts=10):
                 timeout=30
             )
 
-            result = response.json()
+            result = parse_json(response)
             status_code = response.status_code
 
             if status_code in [200, 206, 227]:
@@ -138,7 +150,7 @@ def submit_trace_request(identity_number, reference=None):
             cert=(CERT_PATH, KEY_PATH),
             timeout=30
         )
-        return response.status_code, response.json()
+        return response.status_code, parse_json(response)
     except Exception as e:
         return 500, {"error": str(e), "type": type(e).__name__}
 
@@ -157,7 +169,7 @@ def get_trace_results(request_id, max_attempts=10):
                 timeout=30
             )
 
-            result = response.json()
+            result = parse_json(response)
             status_code = response.status_code
 
             if status_code in [200, 227]:
@@ -268,7 +280,7 @@ def submit_aml_verification(first_name, surname, middle_name=None, date_of_birth
             cert=(CERT_PATH, KEY_PATH),
             timeout=30
         )
-        return response.status_code, response.json()
+        return response.status_code, parse_json(response)
     except Exception as e:
         return 500, {"error": str(e), "type": type(e).__name__}
 
@@ -287,7 +299,7 @@ def get_aml_results(request_id, max_attempts=10):
                 timeout=30
             )
 
-            result = response.json()
+            result = parse_json(response)
             status_code = response.status_code
 
             if status_code in [200, 206, 227]:

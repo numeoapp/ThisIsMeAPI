@@ -19,7 +19,7 @@ app = Flask(__name__)
 CERT_PATH = "www.fxcloudv2.co.za.pem"
 KEY_PATH = "fxcloud.key"
 
-BASE_URL = os.environ.get('THISISME_BASE_URL', 'https://uat-api.thisisme.com').rstrip('/')
+BASE_URL = os.environ.get('THISISME_BASE_URL', 'https://api.thisisme.com').rstrip('/')
 
 # API keys: the existing API_KEY plus optional API_KEYS="name:key,name2:key2"
 API_KEYS = {}
@@ -50,7 +50,7 @@ def verify_api_key():
 
 def submit_datapro_verification(identity_number, reference=None):
     """Submit ID to ThisIsMe DataPro API"""
-    url = f"{BASE_URL}/dhadatapro/"
+    url = f"{BASE_URL}/v4/dhadatapro/"
     headers = {'content-type': 'application/json'}
 
     payload = {
@@ -118,7 +118,7 @@ def get_datapro_results(request_id, max_attempts=10):
 
 def submit_trace_request(identity_number, reference=None):
     """Submit ID to ThisIsMe Trace API"""
-    url = f"{BASE_URL}/trace/"
+    url = f"{BASE_URL}/v4/trace/"
     headers = {'content-type': 'application/json'}
 
     payload = {
@@ -241,7 +241,7 @@ def extract_trace_data(trace_data):
 
 def submit_aml_verification(first_name, surname, middle_name=None, date_of_birth=None, country=None, reference=None):
     """Submit an individual to ThisIsMe AML Risk Search (sanctions/PEP/adverse-media) API"""
-    url = f"{BASE_URL}/amlrisk/search/"
+    url = f"{BASE_URL}/v4/amlrisk/search/"
     headers = {'content-type': 'application/json'}
 
     payload = {

@@ -16,10 +16,10 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 app = Flask(__name__)
 
 # Certificate paths
-CERT_PATH = "www.fxcloudv2.co.za.pem"
+CERT_PATH = "www.cogenttreasury.co.za.pem"
 KEY_PATH = "fxcloud.key"
 
-BASE_URL = os.environ.get('THISISME_BASE_URL', 'https://uat-api.thisisme.com').rstrip('/')
+BASE_URL = os.environ.get('THISISME_BASE_URL', 'https://live-api.thisisme.com').rstrip('/')
 
 # API keys: the existing API_KEY plus optional API_KEYS="name:key,name2:key2"
 API_KEYS = {}

@@ -349,6 +349,36 @@ def health():
     """Health check for monitoring"""
     return jsonify({"status": "healthy"}), 200
 
+@app.route('/tim-whoami', methods=['GET'])
+def tim_whoami():
+    """Free connectivity test: calls ThisIsMe /whoami using the mTLS cert (no credits used)"""
+
+    if not verify_api_key():
+        return jsonify({
+            "success": False,
+            "error": "Unauthorized - Invalid or missing API key"
+        }), 401
+
+    try:
+        response = requests.get(
+            f"{BASE_URL}/whoami",
+            cert=(CERT_PATH, KEY_PATH),
+            verify=False,
+            timeout=30
+        )
+        return jsonify({
+            "base_url": BASE_URL,
+            "cert_file": CERT_PATH,
+            "thisisme_http_status": response.status_code,
+            "thisisme_response": parse_json(response)
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "base_url": BASE_URL,
+            "cert_file": CERT_PATH,
+            "error": str(e)
+        }), 500
+
 @app.route('/verify', methods=['POST'])
 def verify_id():
     """Verify ID - DataPro only (original endpoint)"""
@@ -372,6 +402,7 @@ def verify_id():
             "success": False,
             "error": "No data provided"
         }), 400
+
 
     identity_number = data.get('identity_number')
     reference = data.get('reference', '')

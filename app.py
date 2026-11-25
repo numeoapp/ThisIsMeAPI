@@ -16,7 +16,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 app = Flask(__name__)
 
 # Certificate paths
-CERT_PATH = "www.cogenttreasury.co.za.pem"
+CERT_PATH = "www.cogenttreasury.co.za.pem"  # LIVE certificate, expires 23 Nov 2027
 KEY_PATH = "fxcloud.key"
 
 BASE_URL = os.environ.get('THISISME_BASE_URL', 'https://live-api.thisisme.com').rstrip('/')
@@ -332,8 +332,9 @@ def home():
     return jsonify({
         "status": "online",
         "service": "ThisIsMe API Middleware",
-        "version": "2.2",
+        "version": "2.3",
         "endpoints": {
+            "tim_whoami": "GET /tim-whoami (free certificate check)",
             "verify": "POST /verify (DataPro only)",
             "trace": "POST /trace (Trace only)",
             "aml": "POST /aml (AML Risk Search only)",
@@ -402,7 +403,6 @@ def verify_id():
             "success": False,
             "error": "No data provided"
         }), 400
-
 
     identity_number = data.get('identity_number')
     reference = data.get('reference', '')
@@ -823,18 +823,37 @@ def download_attachment():
     if not file_url:
         return jsonify({"success": False, "error": "url is required"}), 400
 
-    if not file_url.startswith(BASE_URL + "/"):
+    # ThisIsMe live returns report links on api.thisisme.com, not live-api
+    link_host = "https://api.thisisme.com"
+
+    if not str(file_url).startswith((BASE_URL + "/", link_host + "/")):
+        print(f"[download] rejected link: {str(file_url)[:40]}", flush=True)
         return jsonify({"success": False, "error": "url must be a ThisIsMe attachment link"}), 400
 
-    try:
-        resp = requests.get(
-            file_url,
-            verify=False,
-            cert=(CERT_PATH, KEY_PATH),
-            timeout=30
-        )
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e), "type": type(e).__name__}), 500
+    # Try the link as given, then the same path on BASE_URL
+    candidates = [file_url]
+    if file_url.startswith(link_host + "/") and BASE_URL != link_host:
+        candidates.append(BASE_URL + file_url[len(link_host):])
+
+    resp = None
+    for url in candidates:
+        host = url.split('/')[2]
+        try:
+            resp = requests.get(
+                url,
+                verify=False,
+                cert=(CERT_PATH, KEY_PATH),
+                timeout=15
+            )
+        except Exception as e:
+            print(f"[download] {host} -> {type(e).__name__}", flush=True)
+            continue
+        print(f"[download] {host} -> {resp.status_code}", flush=True)
+        if resp.status_code == 200:
+            break
+
+    if resp is None:
+        return jsonify({"success": False, "error": "Could not connect to ThisIsMe"}), 502
 
     if resp.status_code != 200:
         return jsonify({
